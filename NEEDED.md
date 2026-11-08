@@ -3,7 +3,7 @@
 Each item matches a yellow `[To fill: ...]` box on the site.
 
 ## For each of the six towns (Valley Stream, Lynbrook, Rockville Centre, Oceanside, Baldwin, Freeport)
-1. OneKey MLS numbers for the last full month and the last 12 months: median sale price, median days on market, sale-to-list ratio, homes sold, and the month the pull is from.
+1. Town-level numbers from your own OneKey MLS search (median sale price, days on market, percent of list received, homes sold, with the month). OneKey's public statistics page only reports by county, so each town page shows Nassau County figures for September 2026 until then.
 2. Peak ride time to Penn Station and to Grand Central Madison from MTA TrainTime, with the month you checked.
 3. Housing stock from your experience: common styles, lot sizes, age of homes, and what the village or town allows for accessory apartments.
 4. Your recent closed deals in that town (section or street and month), with client permission.

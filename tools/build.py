@@ -49,6 +49,9 @@ def todo(text):
 
 # Shared sources
 SRC = {
+    "onekey": ("OneKey MLS, Local Market Update, Nassau County, September 2026",
+               "https://corporate.onekeymls.com/s/NassauCounty-t8fn.pdf"),
+    "onekey_page": ("OneKey MLS, market statistics", "https://corporate.onekeymls.com/market-statistics"),
     "fema": ("FEMA Flood Map Service Center, search by address", "https://msc.fema.gov/portal/search"),
     "nysba": ("New York State Bar Association, new disclosure and flood rules, March 20, 2024",
               "https://nysba.org/breaking-news-new-rules-on-property-condition-disclosure-and-flood-risk-go-into-effect-today/"),
@@ -89,7 +92,7 @@ TOWNS = [
             ("Which school district is a Valley Stream home in?", "It depends on the street. Elementary grades come from Valley Stream 13, 24 or 30, high school from Valley Stream Central, and some southern streets are in Hewlett-Woodmere."),
             ("Is Valley Stream in a flood zone?", "Some properties may be and many are not. FEMA maps flood zones by address, so look up the exact property on FEMA's Flood Map Service Center and read the seller's flood disclosure."),
         ],
-        "sources": ["vs", "vs_stn", "gibson", "mta_lb", "fema", "nysba"],
+        "sources": ["onekey", "onekey_page", "vs", "vs_stn", "gibson", "mta_lb", "fema", "nysba"],
         "near": ["lynbrook", "rockville-centre"],
     },
     {
@@ -112,7 +115,7 @@ TOWNS = [
             ("What school district is Lynbrook in?", "Five districts serve parts of Lynbrook: Lynbrook, East Rockaway, Hewlett-Woodmere, Malverne and the Valley Stream districts. The district depends on the address."),
             ("How big is Lynbrook?", "About 2.01 square miles, with 20,438 residents at the 2020 Census."),
         ],
-        "sources": ["lyn", "lyn_stn", "mta_lb", "fema", "nysba"],
+        "sources": ["onekey", "onekey_page", "lyn", "lyn_stn", "mta_lb", "fema", "nysba"],
         "near": ["valley-stream", "rockville-centre", "oceanside"],
     },
     {
@@ -136,7 +139,7 @@ TOWNS = [
             ("Who supplies electricity in Rockville Centre?", "The village's own Rockville Centre Electric Department, one of three municipal electric utilities on Long Island."),
             ("When did Rockville Centre become a village?", "Rockville Centre incorporated on July 15, 1893."),
         ],
-        "sources": ["rvc", "rvc_stn", "rvc_elec", "fema", "nysba"],
+        "sources": ["onekey", "onekey_page", "rvc", "rvc_stn", "rvc_elec", "fema", "nysba"],
         "near": ["lynbrook", "oceanside", "baldwin"],
     },
     {
@@ -160,7 +163,7 @@ TOWNS = [
             ("Which LIRR branch serves Oceanside?", "The Long Beach Branch. Oceanside station is at Weidner Avenue and Lawson Boulevard."),
             ("What school district is Oceanside in?", "The Oceanside School District."),
         ],
-        "sources": ["ocs", "ocs_stn", "mta_lb", "fema", "nysba"],
+        "sources": ["onekey", "onekey_page", "ocs", "ocs_stn", "mta_lb", "fema", "nysba"],
         "near": ["rockville-centre", "baldwin", "lynbrook"],
     },
     {
@@ -183,7 +186,7 @@ TOWNS = [
             ("What school district is Baldwin in?", "Mostly the Baldwin Union Free School District, with small parts in Oceanside, Rockville Centre, Roosevelt and Uniondale."),
             ("How many people live in Baldwin?", "33,919 at the 2020 Census."),
         ],
-        "sources": ["bal", "fema", "nysba"],
+        "sources": ["onekey", "onekey_page", "bal", "fema", "nysba"],
         "near": ["rockville-centre", "freeport", "oceanside"],
         "flood_unverified": True,
     },
@@ -208,7 +211,7 @@ TOWNS = [
             ("Which LIRR branch serves Freeport?", "The Babylon Branch."),
             ("What is the Nautical Mile?", "Freeport's waterfront strip along the west side of Woodcleft Canal, with seafood restaurants, shops and boat rides. A festival is held there the first weekend in June."),
         ],
-        "sources": ["fpt", "fema", "nysba"],
+        "sources": ["onekey", "onekey_page", "fpt", "fema", "nysba"],
         "near": ["baldwin", "oceanside"],
         "flood_unverified": True,
     },
@@ -407,17 +410,19 @@ def town_page(t):
 <table><tbody>{glance}</tbody></table>
 
 <h2>What do homes in {n} sell for right now?</h2>
-<p>{todo(f"from your OneKey MLS pull for {n}: median sale price, median days on market, sale-to-list ratio and number of sales for the last full month and the last 12 months, plus the month the numbers are from")}</p>
+<p>OneKey MLS publishes its public market statistics by county, not by town, so the figures below are for single-family homes across all of Nassau County. In September 2026 the county's median single-family sale price was $860,000, homes took a median 40 days to sell, and sellers received 99.8 percent of their original asking price.</p>
 <table>
- <thead><tr><th>Measure</th><th>Last month</th><th>Last 12 months</th></tr></thead>
+ <thead><tr><th>Nassau County single-family homes</th><th>September 2026</th><th>12 months through September 2026</th></tr></thead>
  <tbody>
-  <tr><td>Median sale price</td><td>{todo("number")}</td><td>{todo("number")}</td></tr>
-  <tr><td>Median days on market</td><td>{todo("number")}</td><td>{todo("number")}</td></tr>
-  <tr><td>Sale price as a share of list price</td><td>{todo("number")}</td><td>{todo("number")}</td></tr>
-  <tr><td>Homes sold</td><td>{todo("number")}</td><td>{todo("number")}</td></tr>
+  <tr><td>Median sales price</td><td>$860,000 (up 2.1% from Sept. 2025)</td><td>$860,000 (up 4.9%)</td></tr>
+  <tr><td>Days on market until sale</td><td>40</td><td>46</td></tr>
+  <tr><td>Percent of original list price received</td><td>99.8%</td><td>99.5%</td></tr>
+  <tr><td>Closed sales</td><td>757</td><td>8,260</td></tr>
+  <tr><td>Homes for sale at month end</td><td>2,318</td><td></td></tr>
  </tbody>
 </table>
-<p class="note">Source: {NAME}'s analysis of OneKey MLS closed sales. {todo("month and year")}</p>
+<p class="note">Source: OneKey MLS Local Market Update, Nassau County, September 2026, current as of October 7, 2026. Prices do not account for sale concessions or down payment assistance. Figures cover the whole county, not {n} alone.</p>
+<p>{todo(f"{n} town-level numbers from your own OneKey MLS search: median sale price, days on market, percent of list received and homes sold, with the month")}</p>
 
 <h2>How do you commute from {n} to Manhattan?</h2>
 <p>{t["commute"]}</p>
@@ -503,6 +508,9 @@ add("/", "Long Island South Shore home buyer guides | Long Island Homes",
 
 <h2>Which towns have guides?</h2>
 {towns_table}
+
+<h2>What is the Nassau County market doing right now?</h2>
+<p>In September 2026 the median Nassau County single-family home sold for $860,000, up 2.1 percent from a year earlier, after a median 40 days on market. Sellers received 99.8 percent of their original asking price, according to the <a href="https://corporate.onekeymls.com/s/NassauCounty-t8fn.pdf">OneKey MLS Nassau County report</a>. OneKey publishes these figures by county, so town pages show county numbers until town figures are added.</p>
 
 <h2>Why do flood zones matter so much here?</h2>
 <p>Many South Shore homes sit near bays, creeks and canals, and a FEMA flood zone can mean required flood insurance. New York sellers have had to answer flood questions on the property condition disclosure since March 20, 2024. Start with the <a href="/guides/flood-zones/">South Shore flood zone guide</a>.</p>

@@ -235,7 +235,8 @@ def author_node():
                                  "postalCode": ZIP, "addressCountry": "US"}},
         "hasCredential": {"@type": "EducationalOccupationalCredential",
                           "name": "Seniors Real Estate Specialist (SRES)"},
-        "sameAs": [f"{HOME}/"],
+        "sameAs": [f"{HOME}/", "https://www.linkedin.com/in/realtor/",
+                   "https://www.zillow.com/profile/bisendra", "https://bisendra.substack.com/"],
     }
 
 

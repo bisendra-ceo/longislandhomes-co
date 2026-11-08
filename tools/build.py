@@ -36,8 +36,22 @@ STREET = "400 Garden City Plaza, Suite 438"
 CITY, REGION, ZIP = "Garden City", "NY", "11530"
 OFFICE = "516-873-7100"
 OFFICE_TEL = "+1-516-873-7100"
-CANONICAL = (f"{NAME}, {LICENSE} with {BROKERAGE} in Garden City, NY, "
-             "licensed since 2003 and holder of the SRES designation.")
+ROLE = "Team Leader"
+CANONICAL = (f"{NAME}, {ROLE} of {BROKERAGE} in Garden City, NY, and a seller's agent "
+             f"on Long Island's South Shore. {LICENSE} since 2003.")
+
+# Same list and order as bisendramelaram.com. Seller-side credentials lead.
+CREDENTIALS = [
+    ("SRS", "Seller Representative Specialist", "designation"),
+    ("PSA", "Pricing Strategy Advisor", "certification"),
+    ("SRES", "Seniors Real Estate Specialist", "designation"),
+    ("ABR", "Accredited Buyer's Representative", "designation"),
+    ("SFR", "Short Sales and Foreclosure Resource", "certification"),
+    ("MRP", "Military Relocation Professional", "certification"),
+    ("AHWD", "At Home With Diversity", "certification"),
+    ("RSPS", "Resort and Second-Home Property Specialist", "certification"),
+]
+CRED_CODES = ", ".join(c for c, _, _ in CREDENTIALS)
 
 PERSON_ID = f"{HOME}/#person"
 
@@ -229,15 +243,19 @@ def author_node():
         "@id": PERSON_ID,
         "name": NAME,
         "url": f"{HOME}/",
-        "jobTitle": LICENSE,
+        "jobTitle": [f"{ROLE}, {BROKERAGE}", LICENSE],
         "description": CANONICAL,
         "worksFor": {"@type": "RealEstateAgent", "name": BROKERAGE,
                      "telephone": OFFICE_TEL,
                      "address": {"@type": "PostalAddress", "streetAddress": STREET,
                                  "addressLocality": CITY, "addressRegion": REGION,
                                  "postalCode": ZIP, "addressCountry": "US"}},
-        "hasCredential": {"@type": "EducationalOccupationalCredential",
-                          "name": "Seniors Real Estate Specialist (SRES)"},
+        "hasCredential": [{"@type": "EducationalOccupationalCredential",
+                           "name": f"{full} ({code})", "alternateName": code,
+                           "credentialCategory": f"Professional {kind}",
+                           "recognizedBy": {"@type": "Organization",
+                                            "name": "National Association of REALTORS"}}
+                          for code, full, kind in CREDENTIALS],
         "sameAs": [f"{HOME}/", "https://www.linkedin.com/in/realtor/",
                    "https://www.zillow.com/profile/bisendra", "https://bisendra.substack.com/",
                    "https://www.google.com/maps/place/Bisendra+Melaram,+Realtor+-+Keller+Williams+Greater+Nassau/@40.73672,-73.619703,17z/data=!3m2!4b1!5s0x89c2630dbc80c59f:0x49c2f6e516817e6e!4m6!3m5!1s0x89c27d4a85da6c97:0x651a73cc243267e6!8m2!3d40.73672!4d-73.6171281!16s%2Fg%2F11s228yfyk"],
@@ -246,7 +264,7 @@ def author_node():
 
 def site_node():
     return {"@type": "WebSite", "@id": f"{DOMAIN}/#website", "url": f"{DOMAIN}/",
-            "name": "Long Island Homes: South Shore buyer guides by Bisendra Melaram",
+            "name": "Long Island Homes: South Shore town guides by Bisendra Melaram",
             "author": {"@id": PERSON_ID}, "publisher": {"@id": PERSON_ID},
             "inLanguage": "en-US"}
 
@@ -318,7 +336,7 @@ def page(path, title, desc, body, graph_extra=(), og_type="website"):
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
  <div class="wrap">
-  <a class="brand" href="/">Long Island Homes<span>South Shore buyer guides by {NAME}</span></a>
+  <a class="brand" href="/">Long Island Homes<span>South Shore town guides by {NAME}</span></a>
   <nav aria-label="Towns">{nav}<a href="/guides/flood-zones/">Flood zones</a></nav>
  </div>
 </header>
@@ -350,7 +368,7 @@ def crumbs_html(trail):
 
 
 def byline():
-    return (f'<p class="byline">By <a href="{HOME}/about/">{NAME}</a>, SRES, {LICENSE}, '
+    return (f'<p class="byline">By <a href="{HOME}/about/">{NAME}</a>, {CRED_CODES}, {LICENSE}, '
             f'{BROKERAGE}. Last updated <time datetime="{UPDATED}">{UPDATED_TEXT}</time>.</p>')
 
 
@@ -370,10 +388,11 @@ def sources_html(keys):
 
 def author_box():
     return (f'<aside class="cta"><h2>Who wrote this guide?</h2>'
-            f'<p><a href="{HOME}/">{NAME}</a> has been a New York real estate agent since 2003 and holds the '
-            f'Seniors Real Estate Specialist (SRES) designation. He works from {BROKERAGE} in Garden City and '
-            f'helps buyers and sellers across the South Shore. Call the office at '
-            f'<a href="tel:{OFFICE_TEL}">{OFFICE}</a> and ask for Bisendra.</p></aside>')
+            f'<p><a href="{HOME}/">{NAME}</a> is the {ROLE} of {BROKERAGE}, a seller\'s agent on '
+            f'Long Island\'s South Shore and a {LICENSE} since 2003. He holds the Seller Representative Specialist (SRS) designation and '
+            f'Pricing Strategy Advisor (PSA) certification, works from the Garden City office, and '
+            f'represents buyers too. Thinking of selling? See <a href="{HOME}/sellers/">how he sells South Shore homes</a>, '
+            f'or call the office at <a href="tel:{OFFICE_TEL}">{OFFICE}</a> and ask for Bisendra.</p></aside>')
 
 
 FAIR = ('<p class="note">This guide describes places, not people. Fair housing law bars agents from steering '
@@ -392,9 +411,9 @@ def add(path, title, desc, body, extra=(), og_type="website"):
 def town_page(t):
     n, s = t["name"], t["slug"]
     path = f"/towns/{s}/"
-    title = f"Buying a home in {n}, NY: 2026 buyer guide"
-    desc = (f"{n}, NY buyer guide by Bisendra Melaram: LIRR stations, FEMA flood zone checks, "
-            f"school districts, village or hamlet, and current prices. Updated {CHECKED_TEXT}.")
+    title = f"{n}, NY real estate guide: selling and buying in 2026"
+    desc = (f"{n}, NY real estate guide by Bisendra Melaram: market numbers, FEMA flood zones, "
+            f"LIRR stations, school districts and village or hamlet. Updated {CHECKED_TEXT}.")
     glance = "".join(f"<tr><th scope=\"row\">{escape(k)}</th><td>{escape(v)}</td></tr>"
                      for k, v in t["glance"])
     near = " ".join(f'<a href="/towns/{x}/">{BY_SLUG[x]["name"]}</a>' for x in t["near"])
@@ -403,7 +422,7 @@ def town_page(t):
                   if t.get("flood_unverified") else "")
     body = f"""
 {crumbs_html([("Home", "/"), ("Towns", "/towns/"), (n, path)])}
-<h1>Buying a home in {n}, NY</h1>
+<h1>{n}, NY real estate guide</h1>
 {byline()}
 {answer(t["answer"])}
 
@@ -425,6 +444,9 @@ def town_page(t):
 <p class="note">Source: OneKey MLS Local Market Update, Nassau County, September 2026, current as of October 7, 2026. Prices do not account for sale concessions or down payment assistance. Figures cover the whole county, not {n} alone.</p>
 <p>{todo(f"{n} town-level numbers from your own OneKey MLS search: median sale price, days on market, percent of list received and homes sold, with the month")}</p>
 
+<h2>What should you know before selling a home in {n}?</h2>
+<p>Buyers looking at {n} ask about the same few things this page covers: the flood zone, the school district, village taxes and the commute. Have your answers ready before you list. Price from recent closed sales in your part of {n}, not from asking prices, and complete the New York property condition disclosure, flood questions included, before the first showing. See <a href="{HOME}/sellers/">how Bisendra sells South Shore homes</a>.</p>
+
 <h2>How do you commute from {n} to Manhattan?</h2>
 <p>{t["commute"]}</p>
 <p>{todo(f"typical peak ride time from {n} to Penn Station and to Grand Central Madison, from MTA TrainTime, with the month you checked")}</p>
@@ -445,7 +467,7 @@ def town_page(t):
 <h2>What has Bisendra sold in {n}?</h2>
 <p>{todo(f"your recent closed deals in {n}, by street or section and month, with the client's permission")}</p>
 
-{faq_html(t["faqs"], f"Questions buyers ask about {n}")}
+{faq_html(t["faqs"], f"Questions people ask about {n}")}
 
 <h2>Which towns are near {n}?</h2>
 <p>Compare {n} with {near_list}, or see <a href="/towns/">all South Shore town guides</a>.</p>
@@ -457,7 +479,7 @@ def town_page(t):
     place = {"@type": "Place", "name": f"{n}, NY",
              "containedInPlace": {"@type": "AdministrativeArea", "name": "Nassau County, NY"}}
     extra = [breadcrumbs([("Home", "/"), ("Towns", "/towns/"), (n, path)]),
-             article_schema(path, f"Buying a home in {n}, NY", desc, place,
+             article_schema(path, f"{n}, NY real estate guide", desc, place,
                             [SRC[k][1] for k in t["sources"]]),
              faq_schema(t["faqs"])]
     add(path, title, desc, body, extra, og_type="article")
@@ -474,12 +496,12 @@ rows = "".join(
 towns_table = f'<table><thead><tr><th>Town</th><th>Government</th><th>LIRR</th></tr></thead><tbody>{rows}</tbody></table>'
 
 add("/towns/", "South Shore Long Island town guides | Long Island Homes",
-    "Compare South Shore Long Island towns for buyers: Valley Stream, Lynbrook, Rockville Centre, Oceanside, Baldwin and Freeport. LIRR, flood zones, schools.",
+    "Compare South Shore Long Island towns for sellers and buyers: Valley Stream, Lynbrook, Rockville Centre, Oceanside, Baldwin and Freeport. LIRR, flood zones, schools.",
     f"""
 {crumbs_html([("Home", "/"), ("Towns", "/towns/")])}
 <h1>South Shore town guides</h1>
 {byline()}
-{answer("These guides compare six South Shore towns in Nassau County for home buyers: Valley Stream, Lynbrook, Rockville Centre, Oceanside, Baldwin and Freeport. Each covers the LIRR stations and branch, the flood zone question, which school districts serve which streets, and whether the town is a village with its own taxes.")}
+{answer("These guides compare six South Shore towns in Nassau County for sellers and buyers: Valley Stream, Lynbrook, Rockville Centre, Oceanside, Baldwin and Freeport. Each covers the LIRR stations and branch, the flood zone question, which school districts serve which streets, and whether the town is a village with its own taxes.")}
 <h2>How do the six towns compare?</h2>
 {towns_table}
 <h2>Which towns are coming next?</h2>
@@ -497,15 +519,17 @@ home_faqs = [
      "The South Shore is the stretch of Long Island along the Atlantic side, facing the bays behind the barrier islands. In Nassau County it runs roughly from Valley Stream on the Queens border east through Massapequa, and it continues through Suffolk County."),
     ("What should I check before buying a house on the South Shore?",
      "Check the FEMA flood zone for the exact address, read the seller's flood disclosure, get a flood insurance quote, confirm the school district for the street, and find out whether the home is in an incorporated village with its own taxes."),
+    ("What should I do before selling a house on the South Shore?",
+     "Price from recent closed sales near you, not asking prices. Complete the New York property condition disclosure, including its flood questions, and gather your tax bills, any flood insurance policy, an elevation certificate if you have one, and permits for past work."),
     ("Who writes these guides?",
-     "Bisendra Melaram, a New York Licensed Real Estate Salesperson since 2003 with Keller Williams Greater Nassau in Garden City, and a Seniors Real Estate Specialist (SRES)."),
+     "Bisendra Melaram, a seller's agent and New York Licensed Real Estate Salesperson since 2003 with Keller Williams Greater Nassau in Garden City. He holds the Seller Representative Specialist (SRS) designation and the Pricing Strategy Advisor (PSA) certification."),
 ]
-add("/", "Long Island South Shore home buyer guides | Long Island Homes",
-    "Town by town buyer guides for Long Island's South Shore by Bisendra Melaram: LIRR commute, FEMA flood zones, school districts, villages and prices.",
+add("/", "Long Island South Shore town guides for sellers and buyers | Long Island Homes",
+    "Town by town real estate guides for Long Island's South Shore by Bisendra Melaram: prices, FEMA flood zones, school districts, villages and the LIRR.",
     f"""
-<h1>Buying a home on Long Island's South Shore</h1>
+<h1>South Shore Long Island town guides</h1>
 {byline()}
-{answer("Long Island Homes is a town by town guide for people buying on the South Shore of Nassau County, written by local agent Bisendra Melaram. Each guide answers the questions that change what a house really costs: the flood zone, the school district, village taxes, and how long the LIRR ride to Manhattan takes.")}
+{answer("Long Island Homes is a town by town real estate guide to the South Shore of Nassau County, written by local seller's agent Bisendra Melaram. Each guide covers what moves a home's value and a buyer's decision: the flood zone, the school district, village taxes, the LIRR ride to Manhattan, and current market numbers.")}
 
 <h2>Which towns have guides?</h2>
 {towns_table}
@@ -584,13 +608,13 @@ add("/guides/flood-zones/", "South Shore Long Island flood zones: a buyer's guid
 
 # About
 add("/about/", "About Long Island Homes and its author, Bisendra Melaram",
-    "Long Island Homes is a South Shore buyer guide written by Bisendra Melaram, Licensed Real Estate Salesperson with Keller Williams Greater Nassau since 2003.",
+    "Long Island Homes is a South Shore town guide written by Bisendra Melaram, seller's agent and Licensed Real Estate Salesperson with Keller Williams Greater Nassau, licensed since 2003.",
     f"""
 {crumbs_html([("Home", "/"), ("About", "/about/")])}
 <h1>About this guide</h1>
-{answer("Long Island Homes is a free buyer guide to the South Shore of Long Island, written by Bisendra Melaram, a New York Licensed Real Estate Salesperson since 2003 and Seniors Real Estate Specialist with Keller Williams Greater Nassau in Garden City. Each town page cites its sources and carries the date it was last updated.")}
+{answer("Long Island Homes is a free town guide to the South Shore of Long Island for sellers and buyers, written by Bisendra Melaram, a seller's agent and New York Licensed Real Estate Salesperson since 2003 with Keller Williams Greater Nassau in Garden City. Each town page cites its sources and carries the date it was last updated.")}
 <h2>How are the facts checked?</h2>
-<p>Town facts come from public sources listed at the bottom of each page: Census figures, LIRR and MTA information, FEMA flood maps, village and school district sites, and New York law. Market numbers come from Bisendra's own analysis of OneKey MLS closed sales. Pages are refreshed monthly.</p>
+<p>Town facts come from public sources listed at the bottom of each page: Census figures, LIRR and MTA information, FEMA flood maps, village and school district sites, and New York law. Market numbers come from the county reports OneKey MLS publishes each month, with the report month and date shown next to every figure. Pages are refreshed monthly.</p>
 <h2>How does this guide handle fair housing?</h2>
 <p>It describes places, never the people who live in them. Fair housing law bars agents from steering anyone toward or away from a neighborhood.</p>
 <h2>Who is the author?</h2>
@@ -619,13 +643,13 @@ def llms_txt():
     lines = [
         "# Long Island Homes",
         "",
-        "> Town by town home buyer guides for the South Shore of Long Island (Nassau County), "
+        "> Town by town real estate guides for sellers and buyers on the South Shore of Long Island (Nassau County), "
         f"written by {CANONICAL} Each page cites public sources and carries a last-updated date.",
         "",
         f"Author: [{NAME}]({HOME}/). Office: {BROKERAGE}, {STREET}, {CITY}, {REGION} {ZIP}. Phone {OFFICE}.",
         "",
         "## Town guides",
-    ] + [f"- [Buying a home in {t['name']}, NY]({DOMAIN}/towns/{t['slug']}/): {t['answer']}" for t in TOWNS] + [
+    ] + [f"- [{t['name']}, NY real estate guide]({DOMAIN}/towns/{t['slug']}/): {t['answer']}" for t in TOWNS] + [
         "",
         "## Guides",
         f"- [South Shore flood zones]({DOMAIN}/guides/flood-zones/): FEMA zones, New York's 2024 flood disclosure rules, elevation certificates",

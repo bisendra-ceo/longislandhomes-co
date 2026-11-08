@@ -28,6 +28,7 @@ LAUNCH = False
 UPDATED = "2026-11-08"
 UPDATED_TEXT = "November 8, 2026"
 CHECKED_TEXT = "November 2026"
+OG_IMAGE = "https://longislandhomes.co/assets/og.png"
 
 NAME = "Bisendra Melaram"
 LICENSE = "Licensed Real Estate Salesperson"
@@ -285,7 +286,8 @@ def article_schema(path, title, desc, about=None, citations=()):
     a = {"@type": "Article", "headline": title, "description": desc,
          "url": f"{DOMAIN}{path}", "mainEntityOfPage": f"{DOMAIN}{path}",
          "author": {"@id": PERSON_ID}, "publisher": {"@id": PERSON_ID},
-         "datePublished": UPDATED, "dateModified": UPDATED, "inLanguage": "en-US"}
+         "datePublished": UPDATED, "dateModified": UPDATED, "inLanguage": "en-US",
+         "image": OG_IMAGE}
     if about:
         a["about"] = about
     if citations:
@@ -321,8 +323,12 @@ def page(path, title, desc, body, graph_extra=(), og_type="website"):
 <meta property="og:description" content="{escape(desc)}">
 <meta property="og:url" content="{url}">
 <meta property="og:locale" content="en_US">
-<!-- TODO: add og:image once there is a social card at /assets/og.jpg -->
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="{OG_IMAGE}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Long Island Homes, South Shore town guides by Bisendra Melaram">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{OG_IMAGE}">
 <meta name="twitter:title" content="{escape(title)}">
 <meta name="twitter:description" content="{escape(desc)}">
 <link rel="stylesheet" href="/assets/site.css">
@@ -372,7 +378,7 @@ def byline():
             f'{BROKERAGE}. Last updated <time datetime="{UPDATED}">{UPDATED_TEXT}</time>.</p>')
 
 
-def faq_html(faqs, heading="Common questions"):
+def faq_html(faqs, heading="What else do people ask?"):
     out = [f'<section class="faq"><h2>{heading}</h2>']
     for q, a in faqs:
         out.append(f"<h3>{escape(q)}</h3><p>{escape(a)}</p>")
@@ -382,7 +388,7 @@ def faq_html(faqs, heading="Common questions"):
 
 def sources_html(keys):
     items = "".join(f'<li><a href="{SRC[k][1]}">{escape(SRC[k][0])}</a></li>' for k in keys)
-    return (f'<section class="sources"><h2>Sources</h2><p>Checked {CHECKED_TEXT}.</p>'
+    return (f'<section class="sources"><h2>Where does this information come from?</h2><p>Checked {CHECKED_TEXT}.</p>'
             f'<ul>{items}</ul></section>')
 
 
@@ -412,8 +418,8 @@ def town_page(t):
     n, s = t["name"], t["slug"]
     path = f"/towns/{s}/"
     title = f"{n}, NY real estate guide: selling and buying in 2026"
-    desc = (f"{n}, NY real estate guide by Bisendra Melaram: market numbers, FEMA flood zones, "
-            f"LIRR stations, school districts and village or hamlet. Updated {CHECKED_TEXT}.")
+    desc = (f"{n}, NY real estate guide: market numbers, FEMA flood zones, LIRR stations, "
+            f"school districts and local government. Updated {CHECKED_TEXT}.")
     glance = "".join(f"<tr><th scope=\"row\">{escape(k)}</th><td>{escape(v)}</td></tr>"
                      for k, v in t["glance"])
     near = " ".join(f'<a href="/towns/{x}/">{BY_SLUG[x]["name"]}</a>' for x in t["near"])
@@ -426,7 +432,7 @@ def town_page(t):
 {byline()}
 {answer(t["answer"])}
 
-<h2>{n} at a glance</h2>
+<h2>What are the basics of {n}?</h2>
 <table><tbody>{glance}</tbody></table>
 
 <h2>What do homes in {n} sell for right now?</h2>
@@ -467,7 +473,7 @@ def town_page(t):
 <h2>What has Bisendra sold in {n}?</h2>
 <p>{todo(f"your recent closed deals in {n}, by street or section and month, with the client's permission")}</p>
 
-{faq_html(t["faqs"], f"Questions people ask about {n}")}
+{faq_html(t["faqs"], f"What do people ask about {n}?")}
 
 <h2>Which towns are near {n}?</h2>
 <p>Compare {n} with {near_list}, or see <a href="/towns/">all South Shore town guides</a>.</p>
@@ -524,7 +530,7 @@ home_faqs = [
     ("Who writes these guides?",
      "Bisendra Melaram, a seller's agent and New York Licensed Real Estate Salesperson since 2003 with Keller Williams Greater Nassau in Garden City. He holds the Seller Representative Specialist (SRS) designation and the Pricing Strategy Advisor (PSA) certification."),
 ]
-add("/", "Long Island South Shore town guides for sellers and buyers | Long Island Homes",
+add("/", "Long Island South Shore real estate, town by town | Long Island Homes",
     "Town by town real estate guides for Long Island's South Shore by Bisendra Melaram: prices, FEMA flood zones, school districts, villages and the LIRR.",
     f"""
 <h1>South Shore Long Island town guides</h1>
@@ -563,7 +569,7 @@ flood_faqs = [
     ("What is an elevation certificate?",
      "A document prepared by a licensed surveyor or engineer that records a building's elevation compared with expected flood levels. Insurers can use it to rate flood insurance, and the New York disclosure form asks whether one exists."),
 ]
-add("/guides/flood-zones/", "South Shore Long Island flood zones: a buyer's guide | Long Island Homes",
+add("/guides/flood-zones/", "South Shore Long Island flood zones guide | Long Island Homes",
     "How to check a South Shore Long Island home for flood risk: FEMA flood zones, New York's 2024 flood disclosure rules, elevation certificates and flood insurance.",
     f"""
 {crumbs_html([("Home", "/"), ("Flood zones", "/guides/flood-zones/")])}
@@ -608,10 +614,11 @@ add("/guides/flood-zones/", "South Shore Long Island flood zones: a buyer's guid
 
 # About
 add("/about/", "About Long Island Homes and its author, Bisendra Melaram",
-    "Long Island Homes is a South Shore town guide written by Bisendra Melaram, seller's agent and Licensed Real Estate Salesperson with Keller Williams Greater Nassau, licensed since 2003.",
+    "Long Island Homes is a South Shore town guide by Bisendra Melaram, Team Leader of Keller Williams Greater Nassau and a seller's agent licensed since 2003.",
     f"""
 {crumbs_html([("Home", "/"), ("About", "/about/")])}
 <h1>About this guide</h1>
+{byline()}
 {answer("Long Island Homes is a free town guide to the South Shore of Long Island for sellers and buyers, written by Bisendra Melaram, a seller's agent and New York Licensed Real Estate Salesperson since 2003 with Keller Williams Greater Nassau in Garden City. Each town page cites its sources and carries the date it was last updated.")}
 <h2>How are the facts checked?</h2>
 <p>Town facts come from public sources listed at the bottom of each page: Census figures, LIRR and MTA information, FEMA flood maps, village and school district sites, and New York law. Market numbers come from the county reports OneKey MLS publishes each month, with the report month and date shown next to every figure. Pages are refreshed monthly.</p>

@@ -11,7 +11,7 @@ Each item matches a yellow `[To fill: ...]` box on the site.
 
 ## Site-wide
 6. Flood insurance premium ranges from a local flood insurance agent who agrees to be named, or we drop that section.
-7. A social share image (`site/assets/og.jpg`, 1200 by 630).
+7. Done: a text social card (`og.png`, 1200 by 630) is in place. Swap in a branded one if you like.
 
 ## Facts already on the site
 Population, government, LIRR stations and branches, school districts and utilities come from the public sources listed at the bottom of each page, checked November 2026. Ride times and prices were left blank on purpose because I couldn't verify them.

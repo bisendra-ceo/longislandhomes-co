@@ -13,7 +13,11 @@ Rules for this site:
 import json
 import os
 import shutil
+import sys
 from html import escape
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import town_data as TD  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "site")
@@ -231,7 +235,10 @@ TOWNS = [
         "flood_unverified": True,
     },
 ]
+SRC.update(TD.EXTRA_SRC)
 BY_SLUG = {t["slug"]: t for t in TOWNS}
+VILLAGES = {"valley-stream", "lynbrook", "rockville-centre", "freeport"}
+COUNTY_RANGE = "$835,000 to $911,000"  # OneKey MLS Nassau single-family monthly medians, January to September 2026
 NEXT_TOWNS = ["Merrick", "Bellmore", "Wantagh", "Seaford", "Massapequa",
               "Massapequa Park", "Long Beach", "Island Park", "the Five Towns"]
 
@@ -303,7 +310,16 @@ ROBOTS_META = ("index, follow, max-snippet:-1, max-image-preview:large" if LAUNC
 
 def page(path, title, desc, body, graph_extra=(), og_type="website"):
     url = f"{DOMAIN}{path}"
-    graph = [author_node(), site_node()] + list(graph_extra)
+    graph = [author_node(), site_node()] + [dict(n) for n in graph_extra]
+    if 'class="answer"' in body:
+        holder = next((n for n in graph if n.get("@type") == "AboutPage"), None)
+        if holder is None:
+            holder = {"@type": "WebPage", "url": url, "name": title, "description": desc,
+                      "isPartOf": {"@id": f"{DOMAIN}/#website"}, "dateModified": UPDATED,
+                      "inLanguage": "en-US"}
+            graph.append(holder)
+        holder["@id"] = f"{url}#webpage"
+        holder["speakable"] = {"@type": "SpeakableSpecification", "cssSelector": [".answer"]}
     ld = json.dumps({"@context": "https://schema.org", "@graph": graph},
                     indent=1, ensure_ascii=False)
     nav = "".join(f'<a href="/towns/{t["slug"]}/">{t["name"]}</a>' for t in TOWNS)
@@ -343,7 +359,7 @@ def page(path, title, desc, body, graph_extra=(), og_type="website"):
 <header class="top">
  <div class="wrap">
   <a class="brand" href="/">Long Island Homes<span>South Shore town guides by {NAME}</span></a>
-  <nav aria-label="Towns">{nav}<a href="/guides/flood-zones/">Flood zones</a></nav>
+  <nav aria-label="Towns">{nav}<a href="/guides/flood-zones/">Flood zones</a><a href="/compare/">Compare</a></nav>
  </div>
 </header>
 <main id="main" class="wrap">
@@ -355,7 +371,7 @@ def page(path, title, desc, body, graph_extra=(), og_type="website"):
   <p><strong>{NAME}</strong>, {LICENSE}<br>
   {BROKERAGE}, {STREET}, {CITY}, {REGION} {ZIP}<br>
   Office <a href="tel:{OFFICE_TEL}">{OFFICE}</a></p>
-  <p class="small">Facts on these pages come from the public sources listed on each page and are checked when the page is updated. Confirm anything you rely on, especially flood zones and school districts, for the exact address. Equal Housing Opportunity. <a href="{HOME}/fair-housing/">Fair housing notice</a>. <a href="/about/">About this guide</a>.</p>
+  <p class="small">Facts on these pages come from the public sources listed on each page and are checked when the page is updated. Confirm anything you rely on, especially flood zones and school districts, for the exact address. Equal Housing Opportunity. <a href="{HOME}/fair-housing/">Fair housing notice</a>. <a href="/about/">About this guide</a>. <a href="/glossary/">Glossary</a>. <a href="/updates/">Updates</a>.</p>
  </div>
 </footer>
 </body>
@@ -414,6 +430,90 @@ def add(path, title, desc, body, extra=(), og_type="website"):
     PAGES[path] = page(path, title, desc, body, extra, og_type)
 
 
+def money(n):
+    return f"${n:,.0f}"
+
+
+def rail_table(slug):
+    def cell(x):
+        n, rng, med = x
+        mins = f"{rng} min" + (f", median {med}" if med else "")
+        return f"{n} trains, {mins}"
+    rows = "".join(f"<tr><td>{st}</td><td>{br}</td><td>{cell(p)}</td><td>{cell(g)}</td></tr>"
+                   for st, br, p, g in TD.RAIL[slug])
+    return ('<div class="tablewrap"><table><thead><tr><th>Station</th><th>Branch</th>'
+            '<th>Direct to Penn Station</th><th>Direct to Grand Central Madison</th></tr></thead>'
+            f'<tbody>{rows}</tbody></table></div>'
+            f'<p class="note">Scheduled weekday trains arriving in Manhattan between 7:00 and 9:30 AM on {TD.SAMPLE_DAY}, '
+            f'counting only trains that run through without a change at Jamaica. From the {TD.GTFS_LABEL}. '
+            'Trains with a change at Jamaica add more options. Check MTA TrainTime for your own train.</p>')
+
+
+def district_list(slug):
+    items = []
+    for k in TD.DISTRICTS[slug]:
+        name, url = TD.D[k]
+        items.append(f'<li><a href="{url}">{name}</a></li>' if url else f"<li>{name}</li>")
+    note = TD.DISTRICT_NOTE.get(slug, "")
+    return f'<ul>{"".join(items)}</ul>' + (f"<p>{note}</p>" if note else "")
+
+
+def seller_guides_list():
+    return "<ul>" + "".join(f'<li><a href="{u}">{n}</a></li>' for n, u in TD.SELLER_GUIDES) + "</ul>"
+
+
+def housing_html(t):
+    units, value, url = TD.CENSUS[t["slug"]]
+    kind = "village" if t["slug"] in VILLAGES else "hamlet"
+    return (f"<p>The Census Bureau counts {units:,} housing units in {t['name']}. Owners there estimated the median value of their homes at "
+            f"{money(value)}, in the American Community Survey 2020 to 2024 five-year estimates. That figure is what owners said, "
+            f"averaged over five years, so it lags the market and is not a sale price. For sale prices, use closed sales.</p>"
+            f'<p class="note">Source: <a href="{url}">Census Reporter profile for the {kind} of {t["name"]}</a>, '
+            f"American Community Survey 2020 to 2024 five-year estimates, checked {CHECKED_TEXT}.</p>")
+
+
+def tax_html(t):
+    n = t["name"]
+    if t["slug"] in VILLAGES:
+        layer = (f"{n} is an incorporated village, so a home there pays village tax on top of Town of Hempstead, Nassau County and school taxes. "
+                 "The village bills its own tax separately.")
+    else:
+        layer = (f"{n} is a hamlet, so there is no village tax. Zoning, permits and town taxes run through the Town of Hempstead.")
+    return (f"<p>{layer}</p>"
+            "<p>The Town of Hempstead Receiver of Taxes collects school and general taxes in halves. General taxes are due January 1 and July 1, "
+            "payable without penalty through February 10 and August 10. School taxes are due October 1 and April 1, payable without penalty "
+            "through November 10 and May 10.</p>"
+            "<p>Nassau County assesses homes at 0.1 percent of its market value estimate. Owners who think the estimate is too high can grieve "
+            "with the county's Assessment Review Commission. The next window runs January 4 to March 1, 2027, online through AROW. "
+            f'Sellers can read <a href="{HOME}/sellers/property-taxes/">how property taxes and grievances affect a sale</a>.</p>')
+
+
+def seller_html(t):
+    n = t["name"]
+    return (f"<ul>"
+            f"<li>Price from closed sales in your part of {n}, not asking prices. OneKey MLS reports by county, and Nassau County's monthly "
+            f"median single-family price ran from {COUNTY_RANGE} in 2026 through September.</li>"
+            "<li>Complete the New York property condition disclosure, flood questions included, before your first showing. Since March 20, 2024 "
+            "it cannot be replaced with a $500 credit.</li>"
+            f"<li>{TD.SELLER_POINT[t['slug']]}</li>"
+            "<li>Have your tax bills ready. Prepaid or unpaid taxes are adjusted with the buyer at closing, and buyers budget by monthly cost.</li>"
+            "</ul>"
+            f"<p>Bisendra's seller guides go deeper:</p>{seller_guides_list()}")
+
+
+def buyer_html(t):
+    n = t["name"]
+    return ("<ul>"
+            f"<li>Look up the exact address on FEMA's Flood Map Service Center. FEMA says nearly 25 percent of flood insurance claims come from "
+            "outside high-risk flood zones, so a low-risk map is not the end of the question.</li>"
+            f"<li>Confirm the school district for the street with the district, not the listing.</li>"
+            f"<li>{TD.BUYER_POINT[t['slug']]}</li>"
+            "<li>Since August 17, 2024, agents who are REALTORS need a written buyer agreement before touring a home with you.</li>"
+            "<li>Register for New York's STAR credit with the state tax department once the home is your primary residence.</li>"
+            "</ul>"
+            f'<p>See <a href="{HOME}/buyers/">how Bisendra works with buyers</a> and the <a href="/guides/flood-zones/">flood zone guide</a>.</p>')
+
+
 def town_page(t):
     n, s = t["name"], t["slug"]
     path = f"/towns/{s}/"
@@ -437,7 +537,7 @@ def town_page(t):
 
 <h2>What do homes in {n} sell for right now?</h2>
 <p>OneKey MLS publishes its public market statistics by county, not by town, so the figures below are for single-family homes across all of Nassau County. In September 2026 the county's median single-family sale price was $860,000, homes took a median 40 days to sell, and sellers received 99.8 percent of their original asking price.</p>
-<table>
+<div class="tablewrap"><table>
  <thead><tr><th>Nassau County single-family homes</th><th>September 2026</th><th>12 months through September 2026</th></tr></thead>
  <tbody>
   <tr><td>Median sales price</td><td>$860,000 (up 2.1% from Sept. 2025)</td><td>$860,000 (up 4.9%)</td></tr>
@@ -446,16 +546,21 @@ def town_page(t):
   <tr><td>Closed sales</td><td>757</td><td>8,260</td></tr>
   <tr><td>Homes for sale at month end</td><td>2,318</td><td></td></tr>
  </tbody>
-</table>
+</table></div>
 <p class="note">Source: OneKey MLS Local Market Update, Nassau County, September 2026, current as of October 7, 2026. Prices do not account for sale concessions or down payment assistance. Figures cover the whole county, not {n} alone.</p>
 <p>{todo(f"{n} town-level numbers from your own OneKey MLS search: median sale price, days on market, percent of list received and homes sold, with the month")}</p>
 
-<h2>What should you know before selling a home in {n}?</h2>
-<p>Buyers looking at {n} ask about the same few things this page covers: the flood zone, the school district, village taxes and the commute. Have your answers ready before you list. Price from recent closed sales in your part of {n}, not from asking prices, and complete the New York property condition disclosure, flood questions included, before the first showing. See <a href="{HOME}/sellers/">how Bisendra sells South Shore homes</a>.</p>
+<h2>What should sellers in {n} know?</h2>
+<p>Buyers looking at {n} ask about the same few things this page covers: the flood zone, the school district, taxes and the commute. Have your answers ready before you list.</p>
+{seller_html(t)}
+
+<h2>What should buyers in {n} know?</h2>
+{buyer_html(t)}
 
 <h2>How do you commute from {n} to Manhattan?</h2>
 <p>{t["commute"]}</p>
-<p>{todo(f"typical peak ride time from {n} to Penn Station and to Grand Central Madison, from MTA TrainTime, with the month you checked")}</p>
+<p>Here is how the weekday morning schedule looks for direct trains.</p>
+{rail_table(s)}
 
 <h2>Is {n} in a flood zone?</h2>
 <p>{t["flood"]}{flood_flag}</p>
@@ -466,9 +571,15 @@ def town_page(t):
 
 <h2>Which school district serves a home in {n}?</h2>
 <p>{t["schools"]}</p>
+<p>Districts that serve parts of {n}, with official sites where checked:</p>
+{district_list(s)}
+
+<h2>How do property taxes work in {n}?</h2>
+{tax_html(t)}
 
 <h2>What kinds of homes are in {n}?</h2>
-<p>{todo(f"housing stock in {n} from your experience and MLS data: common styles (capes, hi-ranches, colonials, splits), typical lot sizes, age of homes, and what the village or town allows for accessory apartments")}</p>
+{housing_html(t)}
+<p>{todo(f"housing stock in {n} from your experience and MLS data: common styles (capes, hi-ranches, colonials, splits), typical lot sizes and age of homes")}</p>
 
 <h2>What has Bisendra sold in {n}?</h2>
 <p>{todo(f"your recent closed deals in {n}, by street or section and month, with the client's permission")}</p>
@@ -476,17 +587,17 @@ def town_page(t):
 {faq_html(t["faqs"], f"What do people ask about {n}?")}
 
 <h2>Which towns are near {n}?</h2>
-<p>Compare {n} with {near_list}, or see <a href="/towns/">all South Shore town guides</a>.</p>
+<p>Compare {n} with {near_list}, see <a href="/compare/">all six towns side by side</a>, or look up a term in the <a href="/glossary/">glossary</a>.</p>
 
 {FAIR}
 {author_box()}
-{sources_html(t["sources"])}
+{sources_html(t["sources"] + ["gtfs", "census_" + s, "hempstead_tax", "arc", "fema_risk", "dtf_newbuyers", "nar_settlement"])}
 """
     place = {"@type": "Place", "name": f"{n}, NY",
              "containedInPlace": {"@type": "AdministrativeArea", "name": "Nassau County, NY"}}
     extra = [breadcrumbs([("Home", "/"), ("Towns", "/towns/"), (n, path)]),
              article_schema(path, f"{n}, NY real estate guide", desc, place,
-                            [SRC[k][1] for k in t["sources"]]),
+                            [SRC[k][1] for k in t["sources"] + ["gtfs", "census_" + s, "hempstead_tax", "arc", "fema_risk"]]),
              faq_schema(t["faqs"])]
     add(path, title, desc, body, extra, og_type="article")
 
@@ -499,7 +610,7 @@ rows = "".join(
     f'<tr><td><a href="/towns/{t["slug"]}/">{t["name"]}</a></td>'
     f'<td>{escape(dict(t["glance"])["Government"].split(",")[0])}</td>'
     f'<td>{escape(dict(t["glance"])["LIRR"])}</td></tr>' for t in TOWNS)
-towns_table = f'<table><thead><tr><th>Town</th><th>Government</th><th>LIRR</th></tr></thead><tbody>{rows}</tbody></table>'
+towns_table = f'<div class="tablewrap"><table><thead><tr><th>Town</th><th>Government</th><th>LIRR</th></tr></thead><tbody>{rows}</tbody></table></div>'
 
 add("/towns/", "South Shore Long Island town guides | Long Island Homes",
     "Compare South Shore Long Island towns for sellers and buyers: Valley Stream, Lynbrook, Rockville Centre, Oceanside, Baldwin and Freeport. LIRR, flood zones, schools.",
@@ -510,6 +621,7 @@ add("/towns/", "South Shore Long Island town guides | Long Island Homes",
 {answer("These guides compare six South Shore towns in Nassau County for sellers and buyers: Valley Stream, Lynbrook, Rockville Centre, Oceanside, Baldwin and Freeport. Each covers the LIRR stations and branch, the flood zone question, which school districts serve which streets, and whether the town is a village with its own taxes.")}
 <h2>How do the six towns compare?</h2>
 {towns_table}
+<p>The <a href="/compare/">full comparison</a> adds weekday train times, housing counts and utilities.</p>
 <h2>Which towns are coming next?</h2>
 <p>{", ".join(NEXT_TOWNS)}, then the Suffolk South Shore from Amityville east.</p>
 {FAIR}
@@ -539,6 +651,7 @@ add("/", "Long Island South Shore real estate, town by town | Long Island Homes"
 
 <h2>Which towns have guides?</h2>
 {towns_table}
+<p>See them <a href="/compare/">side by side</a>, with train times, taxes and housing counts, or look up a term in the <a href="/glossary/">glossary</a>.</p>
 
 <h2>What is the Nassau County market doing right now?</h2>
 <p>In September 2026 the median Nassau County single-family home sold for $860,000, up 2.1 percent from a year earlier, after a median 40 days on market. Sellers received 99.8 percent of their original asking price, according to the <a href="https://corporate.onekeymls.com/s/NassauCounty-t8fn.pdf">OneKey MLS Nassau County report</a>. OneKey publishes these figures by county, so town pages show county numbers until town figures are added.</p>
@@ -630,6 +743,114 @@ add("/about/", "About Long Island Homes and its author, Bisendra Melaram",
 """, [breadcrumbs([("Home", "/"), ("About", "/about/")]),
       {"@type": "AboutPage", "url": f"{DOMAIN}/about/", "author": {"@id": PERSON_ID}}])
 
+# Compare
+def _penn_median(slug):
+    return TD.RAIL[slug][0][2][2]
+
+
+cmp_rows1 = "".join(
+    f'<tr><td><a href="/towns/{t["slug"]}/">{t["name"]}</a></td>'
+    f'<td>{"Village" if t["slug"] in VILLAGES else "Hamlet"}</td>'
+    f'<td>{TD.RAIL[t["slug"]][0][0]} ({TD.RAIL[t["slug"]][0][1]})</td>'
+    f'<td>{_penn_median(t["slug"])} min</td>'
+    f'<td>{"Yes" if t["slug"] in ("rockville-centre", "freeport") else "No"}</td></tr>' for t in TOWNS)
+cmp_rows2 = "".join(
+    f'<tr><td><a href="/towns/{t["slug"]}/">{t["name"]}</a></td>'
+    f'<td>{TD.CENSUS[t["slug"]][0]:,}</td><td>{money(TD.CENSUS[t["slug"]][1])}</td>'
+    '</tr>' for t in TOWNS)
+compare_faqs = [
+    ("Which South Shore town has the shortest train ride to Manhattan?",
+     "Of these six, Valley Stream. Direct weekday morning trains from Valley Stream station to Penn Station had a median scheduled ride of 34 minutes in the November 2026 LIRR schedule, and Oceanside's had the longest, 43.5 minutes."),
+    ("Which South Shore towns have no village tax?",
+     "Oceanside and Baldwin. Both are hamlets governed by the Town of Hempstead. Valley Stream, Lynbrook, Rockville Centre and Freeport are incorporated villages with their own village taxes."),
+    ("Which South Shore villages run their own electric utility?",
+     "Rockville Centre and Freeport. Each village runs a municipal electric department, so buyers there should ask the seller for recent electric bills."),
+    ("Are the home values in this comparison sale prices?",
+     "No. They are owners' own estimates from the Census Bureau's American Community Survey, averaged over 2020 to 2024. They lag the market. For sale prices, use recent closed sales."),
+]
+add("/compare/", "Compare South Shore Long Island towns | Long Island Homes",
+    "Valley Stream, Lynbrook, Rockville Centre, Oceanside, Baldwin and Freeport side by side: village or hamlet, LIRR ride times, school districts, homes and taxes.",
+    f"""
+{crumbs_html([("Home", "/"), ("Compare towns", "/compare/")])}
+<h1>How do the South Shore towns compare?</h1>
+{byline()}
+{answer("Valley Stream has the shortest direct morning train ride of these six towns, a median 34 minutes to Penn Station, and Oceanside the longest at 43.5. Oceanside and Baldwin are hamlets with no village tax. Rockville Centre and Freeport run their own electric utilities. Freeport has the most housing units of the six, by Census count.")}
+
+<h2>How do government, the commute and utilities compare?</h2>
+<div class="tablewrap"><table><thead><tr><th>Town</th><th>Government</th><th>Main station and branch</th><th>Median direct ride to Penn, weekday AM</th><th>Village electric utility</th></tr></thead>
+<tbody>{cmp_rows1}</tbody></table></div>
+<p class="note">Ride times are scheduled weekday trains arriving between 7:00 and 9:30 AM on {TD.SAMPLE_DAY} with no change at Jamaica, from the {TD.GTFS_LABEL}. Each town guide also shows Grand Central Madison.</p>
+
+<h2>How do housing counts and home values compare?</h2>
+<div class="tablewrap"><table><thead><tr><th>Town</th><th>Housing units</th><th>Median owner-estimated home value</th></tr></thead>
+<tbody>{cmp_rows2}</tbody></table></div>
+<p class="note">Housing units and owner-estimated values from the American Community Survey 2020 to 2024 five-year estimates, via Census Reporter, checked {CHECKED_TEXT}. Owner estimates lag the market and are not sale prices. OneKey MLS reports sale prices by county: Nassau's monthly median single-family price ran from {COUNTY_RANGE} in 2026 through September.</p>
+
+<h2>What does village or hamlet mean for your taxes?</h2>
+<p>A home in an incorporated village pays village tax on top of Town of Hempstead, Nassau County and school taxes, and the village runs its own building department. A hamlet has no village government, so zoning and permits go through the Town of Hempstead. All six towns pay school and general taxes to the Town of Hempstead Receiver of Taxes. See the <a href="/glossary/">glossary</a> for terms.</p>
+
+<h2>Why can two homes in the same town pay different school taxes?</h2>
+<p>Because South Shore school district lines do not follow village or hamlet lines. Parts of Lynbrook are in five districts, and about a fifth of Rockville Centre is in the Oceanside district. Each town guide lists the districts that serve it.</p>
+
+{faq_html(compare_faqs)}
+{FAIR}
+{author_box()}
+{sources_html(["gtfs", "onekey", "hempstead_tax"])}
+<p class="note">Census Reporter profiles: {", ".join(f'<a href="{TD.CENSUS[t["slug"]][2]}">{t["name"]}</a>' for t in TOWNS)}.</p>
+""", [breadcrumbs([("Home", "/"), ("Compare towns", "/compare/")]),
+      article_schema("/compare/", "How do the South Shore towns compare?",
+                     "Six South Shore towns side by side.",
+                     {"@type": "Place", "name": "South Shore of Long Island, Nassau County, NY"},
+                     [TD.GTFS_URL] + [TD.CENSUS[t["slug"]][2] for t in TOWNS] + [SRC["onekey"][1], SRC["hempstead_tax"][1]]),
+      faq_schema(compare_faqs)], og_type="article")
+
+
+# Glossary
+def _slug(term):
+    return "".join(c if c.isalnum() else "-" for c in term.lower()).strip("-").replace("--", "-")
+
+
+gl_items = "".join(
+    f'<dt id="{_slug(term)}">{escape(term)}</dt><dd>{escape(d)}'
+    + (f' <a href="{SRC[k][1]}">Source</a>.' if k else "") + "</dd>"
+    for term, d, k in TD.GLOSSARY)
+add("/glossary/", "South Shore Long Island real estate glossary | Long Island Homes",
+    "Plain definitions of South Shore real estate terms: villages and hamlets, flood zones, disclosure, assessments, grievances, STAR and transfer tax.",
+    f"""
+{crumbs_html([("Home", "/"), ("Glossary", "/glossary/")])}
+<h1>South Shore real estate glossary</h1>
+{byline()}
+{answer("This glossary defines the terms sellers and buyers meet on Long Island's South Shore: villages and hamlets, FEMA flood zones and elevation certificates, New York's property condition disclosure, Nassau County assessments and grievances, STAR, transfer and mansion taxes, LIRR terms, and the market measures OneKey MLS reports each month.")}
+<dl class="glossary">{gl_items}</dl>
+{FAIR}
+{author_box()}
+""", [breadcrumbs([("Home", "/"), ("Glossary", "/glossary/")]),
+      {"@type": "DefinedTermSet", "@id": f"{DOMAIN}/glossary/#terms", "name": "South Shore real estate glossary",
+       "url": f"{DOMAIN}/glossary/",
+       "hasDefinedTerm": [{"@type": "DefinedTerm", "name": term, "description": d,
+                           "url": f"{DOMAIN}/glossary/#{_slug(term)}",
+                           "inDefinedTermSet": f"{DOMAIN}/glossary/#terms"} for term, d, _ in TD.GLOSSARY]}])
+
+
+# Updates log
+UPDATES = [
+    ("2026-11-08", "November 8, 2026",
+     "Deepened all six town guides with weekday LIRR ride times from the November 2026 schedule feed, Census housing figures, "
+     "school district links, property tax dates and grievance windows, and separate checklists for sellers and buyers. "
+     "Added the town comparison and the glossary."),
+]
+_upd = "".join(f'<li><time datetime="{d}">{t}</time>. {escape(x)}</li>' for d, t, x in UPDATES)
+add("/updates/", "Updates to the South Shore town guides | Long Island Homes",
+    "A dated log of changes to longislandhomes.co: new town data, refreshed market figures and corrections.",
+    f"""
+{crumbs_html([("Home", "/"), ("Updates", "/updates/")])}
+<h1>What has changed in these guides?</h1>
+{byline()}
+{answer("This page logs every meaningful change to the South Shore town guides, newest first. Market figures come from the monthly OneKey MLS reports for Nassau County, train times from the LIRR's published schedule feed, and tax dates from the Town of Hempstead and Nassau County, each refreshed on the schedule in the content calendar.")}
+<ul>{_upd}</ul>
+""", [breadcrumbs([("Home", "/"), ("Updates", "/updates/")])])
+
+
 NOT_FOUND = page("/404.html", "Page not found | Long Island Homes", "This page does not exist.",
                  '<h1>Page not found</h1><p>Try the <a href="/towns/">town guides</a>.</p>')
 
@@ -660,7 +881,13 @@ def llms_txt():
         "",
         "## Guides",
         f"- [South Shore flood zones]({DOMAIN}/guides/flood-zones/): FEMA zones, New York's 2024 flood disclosure rules, elevation certificates",
+        f"- [Compare the six towns]({DOMAIN}/compare/): village or hamlet, LIRR ride times, housing units, owner-estimated values, utilities",
+        f"- [Glossary]({DOMAIN}/glossary/): villages and hamlets, flood zones, disclosure, assessments, STAR, transfer tax",
+        f"- [Updates]({DOMAIN}/updates/): dated log of changes",
         f"- [All town guides]({DOMAIN}/towns/)",
+        "",
+        "## Seller guides by the author (bisendramelaram.com)",
+    ] + [f"- [{n}]({u})" for n, u in TD.SELLER_GUIDES] + [
         f"- [About this guide]({DOMAIN}/about/)",
         "",
     ]
